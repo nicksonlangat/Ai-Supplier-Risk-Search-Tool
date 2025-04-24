@@ -1,101 +1,109 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useChat } from '@ai-sdk/react';
+import { SupplierResults } from './components/supplier-results';
+import { Supplier } from './lib/suppliers';
+import { useState, useEffect } from 'react';
+
+export default function Chat() {
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    initialMessages: [
+      {
+        id: 'welcome-message',
+        role: 'assistant',
+        content: 'Welcome to the Supplier Risk Management Assistant. You can ask me questions about suppliers such as:\n\n- "What are the top 3 suppliers with the highest risk scores?"\n- "Show me all suppliers in the healthcare industry"\n- "Which suppliers have financial compliance risks?"\n\nHow can I help you today?'
+      }
+    ]
+  });
+  
+  // Function to extract supplier data from message parts
+  const extractSupplierData = (message: any): Supplier[] | null => {
+    // Check if the message has parts
+    if (message.parts) {
+      for (const part of message.parts) {
+        // Look for tool_call parts that contain supplier data
+        if (part.type === 'tool_call' && 
+            part.tool === 'searchSuppliers' && 
+            part.output) {
+          return part.output as Supplier[];
+        }
+      }
+    }
+    
+    // For older versions of AI SDK or different message formats
+    if (message.content && typeof message.content === 'string') {
+      try {
+        // Try to find JSON data in the content
+        const match = message.content.match(/```json\n([\s\S]*?)\n```/);
+        if (match && match[1]) {
+          const data = JSON.parse(match[1]);
+          if (Array.isArray(data) && data.length > 0 && 'id' in data[0]) {
+            return data as Supplier[];
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse JSON from message content', e);
+      }
+    }
+    
+    return null;
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex flex-col w-full max-w-3xl py-24 mx-auto stretch">
+      <h1 className="text-2xl font-bold mb-4">Supplier Risk Management Assistant</h1>
+      
+      <div className="space-y-4 mb-4">
+        {messages.map(message => {
+          const supplierData = extractSupplierData(message);
+          
+          return (
+            <div 
+              key={message.id} 
+              className={`p-4 rounded-lg ${
+                message.role === 'user' 
+                  ? 'bg-orange-500 text-black ml-auto max-w-[80%]' 
+                  : 'bg-white text-black mr-auto max-w-[80%]'
+              }`}
+            >
+              <div className="font-semibold mb-1">
+                {message.role === 'user' ? 'You' : 'Assistant'}
+              </div>
+              
+              <div className="whitespace-pre-wrap">
+                {message.content}
+              </div>
+              
+              {supplierData && (
+                <div className="mt-2">
+                  <SupplierResults suppliers={supplierData} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        
+        {isLoading && (
+          <div className="p-4 rounded-lg bg-gray-100 mr-auto max-w-[80%]">
+            <div className="font-semibold mb-1">Assistant</div>
+            <div className="flex items-center space-x-2">
+              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce"></div>
+              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        )}
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <form onSubmit={handleSubmit} className="fixed bottom-0 w-full max-w-3xl mb-8">
+        <input
+          className="w-full p-4 border border-gray-300 rounded-lg shadow-lg dark:bg-zinc-800 dark:border-zinc-700"
+          value={input}
+          placeholder="Ask about suppliers (e.g., 'Show me the top 3 highest risk suppliers')"
+          onChange={handleInputChange}
+          disabled={isLoading}
+        />
+      </form>
     </div>
   );
 }
