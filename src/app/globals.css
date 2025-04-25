@@ -20,6 +20,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+::-webkit-scrollbar {
+  width: 0; /* Remove scrollbar space */
+  background: transparent; /* Optional: just make scrollbar invisible */
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;  /* For horizontal scrollbar */
+}
+
+body::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
