@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { SupplierResults } from './components/supplier-results';
 import { Supplier } from './lib/suppliers';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
@@ -15,6 +15,19 @@ export default function Chat() {
       }
     ]
   });
+  
+  // Create a ref for the messages container
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Function to scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  // Scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
   
   // Function to extract supplier data from message parts
   const extractSupplierData = (message: any): Supplier[] | null => {
@@ -50,56 +63,66 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-3xl py-24 mx-auto stretch">
-      <h1 className="text-2xl font-bold mb-4">Supplier Risk Management Assistant</h1>
+    <div className="flex bg-base-800 flex-col w-full max-w-3xl mx-auto h-screen">
+      <h1 className="text-2xl font-bold p-4 border-b border-white/10">Supplier Risk Management Assistant</h1>
       
-      <div className="space-y-4 mb-4">
-        {messages.map(message => {
-          const supplierData = extractSupplierData(message);
-          
-          return (
-            <div 
-              key={message.id} 
-              className={`p-4 rounded-lg ${
-                message.role === 'user' 
-                  ? 'bg-orange-500 text-black ml-auto max-w-[80%]' 
-                  : 'bg-white text-black mr-auto max-w-[80%]'
-              }`}
-            >
-              <div className="font-semibold mb-1">
-                {message.role === 'user' ? 'You' : 'Assistant'}
-              </div>
-              
-              <div className="whitespace-pre-wrap">
-                {message.content}
-              </div>
-              
-              {supplierData && (
-                <div className="mt-2">
-                  <SupplierResults suppliers={supplierData} />
+      {/* Make the messages container scrollable with fixed height */}
+      <div className="flex-1 overflow-y-auto p-4 pb-32">
+        <div className="space-y-4">
+          {messages.map(message => {
+            const supplierData = extractSupplierData(message);
+            
+            return (
+              <div 
+                key={message.id} 
+                className={`p-4 text-white rounded-lg ${
+                  message.role === 'user' 
+                    ? 'bg-base-700 ml-auto max-w-[80%]' 
+                    : 'bg-base-700  mr-auto max-w-[80%]'
+                }`}
+              >
+                <div className="font-semibold  mb-1">
+                  {message.role === 'user' ? 'You' : 'Assistant'}
                 </div>
-              )}
+                
+                <div className="whitespace-pre-wrap">
+                  {message.content}
+                </div>
+                
+                {supplierData && (
+                  <div className="mt-2">
+                    <SupplierResults suppliers={supplierData} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
+          {isLoading && (
+            <div className="pt-5 text-white/50 rounded-lg  mr-auto max-w-[80%]">
+              <div className="mb-1">Thinking...</div>
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-white/30 rounded-full animate-bounce"></div>
+                <div className="h-2 w-2 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="h-2 w-2 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
             </div>
-          );
-        })}
-        
-        {isLoading && (
-          <div className="p-4 rounded-lg bg-gray-100 mr-auto max-w-[80%]">
-            <div className="font-semibold mb-1">Assistant</div>
-            <div className="flex items-center space-x-2">
-              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce"></div>
-              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-            </div>
-          </div>
-        )}
+          )}
+          
+          {/* This empty div is used as a reference for scrolling to the bottom */}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="fixed bottom-0 w-full max-w-3xl mb-8">
+      <form 
+        onSubmit={handleSubmit} 
+        className="fixed bottom-0 w-full max-w-3xl p-4 bg-base-800 border-white/5 border-t"
+      >
         <input
-          className="w-full p-4 border border-gray-300 rounded-lg shadow-lg dark:bg-zinc-800 dark:border-zinc-700"
+          className="w-full p-4 border border-white/10 rounded-xl shadow-lg bg-base-700 placeholder:text-white/50
+          focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
           value={input}
-          placeholder="Ask about suppliers (e.g., 'Show me the top 3 highest risk suppliers')"
+          placeholder="Ask about suppliers (e.g., 'Show me the top 3 highest risk suppliers') Press Enter to send"
           onChange={handleInputChange}
           disabled={isLoading}
         />
